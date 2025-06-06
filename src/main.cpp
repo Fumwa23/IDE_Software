@@ -9,13 +9,24 @@
 
 // Define pins for stpper motor control
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
-#define STEP_PIN_BASE 26
-#define DIR_PIN_BASE 27
-#define ENABLE_PIN_BASE 25
+#define STEP_PIN_BASE 8
+#define DIR_PIN_BASE 6
+#define ENABLE_PIN_BASE 4
+
+#define STEP_PIN_ARM 2
+#define DIR_PIN_ARM 5
+#define ENABLE_PIN_ARM 1
 
 // Define pins for joystick
-#define JOYSTICK_X_PIN 34
-#define JOYSTICK_Y_PIN 32
+#define JOYSTICK_X_PIN 9
+#define JOYSTICK_Y_PIN 7
+
+// LED Pins
+#define LED1 21
+#define LED2 34
+#define LED3 38
+#define LED4 39
+#define LED5 40
 
 
 ScrollWheel scrollWheel; // Starting position is 1
@@ -35,6 +46,17 @@ void setup() {
   joystick.setup(JOYSTICK_X_PIN, JOYSTICK_Y_PIN);
   Serial.println("PSP Joystick Ready");
   Serial.println("Setup complete. Starting main loop...");
+
+  pinMode(LED1, OUTPUT);
+  digitalWrite(LED1, HIGH);
+  pinMode(LED2, OUTPUT);
+  digitalWrite(LED2, HIGH);
+  pinMode(LED3, OUTPUT);
+  digitalWrite(LED3, HIGH);
+  pinMode(LED4, OUTPUT);
+  digitalWrite(LED4, HIGH);
+  pinMode(LED5, OUTPUT);
+  digitalWrite(LED5, HIGH);
 }
 
 void loop() {
