@@ -1,4 +1,7 @@
-#pragma once
+#ifndef STEPPER_MOTOR_H
+#define STEPPER_MOTOR_H
+
+
 #include <AccelStepper.h>
 
 class StepperMotor {
@@ -14,3 +17,5 @@ private:
     AccelStepper stepper;
     long targetPosition = 0;
 };
+
+#endif // STEPPER_MOTOR_H
