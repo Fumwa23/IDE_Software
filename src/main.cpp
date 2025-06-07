@@ -1,9 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#include "scrollWheel.h"
+#include "ScrollWheel.h"
 #include "StepperMotor.h"
 #include "PSPJoystick.h"
+
+#include "SaveManager.h"
 
 // Define pins for scroll wheel I2C communication
 #define SDA_PIN 33
@@ -31,14 +33,24 @@
 #define LED5 40
 
 #define buttonPin 3
+int previousButtonState = HIGH;
 
 ScrollWheel scrollWheel; // Starting position is 1
 StepperMotor baseMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
 PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL);
 
+void runButtonPressed();
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
+
+  scrollWheel.setup(SDA_PIN, SCL_PIN);
+  Serial.println("ScrollWheel Ready");
+
+  baseMotor.setTargetPosition(0);
+  pinMode(ENABLE_PIN_BASE, INPUT_PULLDOWN);
+  Serial.println("Stepper Motor Ready");
 
   // Initialise joystick
   joystick.calibrate(
@@ -53,20 +65,25 @@ void setup() {
   pinMode(LED4, OUTPUT);
   pinMode(LED5, OUTPUT);
 
-  digitalWrite(LED1, HIGH);
-  digitalWrite(LED2, HIGH);
-  digitalWrite(LED3, HIGH);
-  digitalWrite(LED4, HIGH);
-  digitalWrite(LED5, HIGH);
+  digitalWrite(LED1, LOW);
+  digitalWrite(LED2, LOW);
+  digitalWrite(LED3, LOW);
+  digitalWrite(LED4, LOW);
+  digitalWrite(LED5, LOW);
 
-  Serial.println("Joystick and LEDs initialised");
+  // Setup button
+  pinMode(buttonPin, INPUT_PULLUP); // Use internal pull-up resistor
 }
 
 void loop() {
+  if (digitalRead(buttonPin) == LOW && previousButtonState == HIGH) {
+    // Button was pressed
+    Serial.println("Button pressed!");
+    runButtonPressed();
+  }
+
   int x = joystick.getX();
   int y = joystick.getY();
-
-  Serial.printf("Joystick X: %d mV, Y: %d mV\n", x, y);
 
   if (x > 2600) {
     digitalWrite(LED1, LOW);
@@ -90,5 +107,21 @@ void loop() {
     digitalWrite(LED4, HIGH);
   }
 
+  scrollWheel.updatePosition();
+  Serial.print("Current Position: ");
+  Serial.println(scrollWheel.getPosition());
+
   delay(100); // Adjust for responsiveness
+}
+
+
+//Function Handlers:
+
+void runButtonPressed() {
+
+  int savePosition = scrollWheel.getPosition();
+
+  digitalWrite(LED5, HIGH); // Indicate button press with LED5
+  delay(500); // Debounce delay
+  digitalWrite(LED5, LOW);
 }
