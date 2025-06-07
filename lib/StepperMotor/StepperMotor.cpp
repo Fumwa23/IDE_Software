@@ -8,10 +8,7 @@ StepperMotor::StepperMotor(uint8_t interfaceType, uint8_t stepPin, uint8_t dirPi
     targetPosition = 0;
 }
 
-void StepperMotor::setTargetPosition(long pos) {
-    if (pos < 0) pos = 0;
-    if (pos > 3200) pos = 3200;
-    targetPosition = pos;
+void StepperMotor::setTargetPosition(long targetPosition) {
     stepper.moveTo(targetPosition);
 }
 
