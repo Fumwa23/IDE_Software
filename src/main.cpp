@@ -20,6 +20,11 @@ void setup() {
 
   // Initialise joystick
   joystick.setup(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL);
+  // Manual calibration: centreLow, centreHigh, minOut, maxOut for X and Y in mV
+  joystick.calibrate(
+    1600, 2400, 750, 3200,  // X axis
+    1400, 2250, 450, 2900   // Y axis
+  );
 
   // Setup LEDs
   pinMode(LED1, OUTPUT);
@@ -43,29 +48,24 @@ void loop() {
 
   Serial.printf("Joystick X: %d mV, Y: %d mV\n", x, y);
 
-  if (x > 2500 && y > 2500) {
+  if (x > 2600) {
     digitalWrite(LED1, LOW);
     digitalWrite(LED2, HIGH);
-    digitalWrite(LED3, HIGH);
-    digitalWrite(LED4, HIGH);
-  } else if (x < 1500 && y > 2500) {
+  } else if (x < 1600) {
     digitalWrite(LED1, HIGH);
     digitalWrite(LED2, LOW);
-    digitalWrite(LED3, HIGH);
-    digitalWrite(LED4, HIGH);
-  } else if (x > 2500 && y < 1500) {
-    digitalWrite(LED1, HIGH);
-    digitalWrite(LED2, HIGH);
-    digitalWrite(LED3, LOW);
-    digitalWrite(LED4, HIGH);
-  } else if (x < 1500 && y < 1500) {
-    digitalWrite(LED1, HIGH);
-    digitalWrite(LED2, HIGH);
-    digitalWrite(LED3, HIGH);
-    digitalWrite(LED4, LOW);
   } else {
     digitalWrite(LED1, HIGH);
     digitalWrite(LED2, HIGH);
+  }
+  
+  if (y > 2250) {
+    digitalWrite(LED3, LOW);
+    digitalWrite(LED4, HIGH);
+  } else if (y < 1400) {
+    digitalWrite(LED3, HIGH);
+    digitalWrite(LED4, LOW);
+  } else {
     digitalWrite(LED3, HIGH);
     digitalWrite(LED4, HIGH);
   }
