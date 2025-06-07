@@ -116,16 +116,16 @@ void loop() {
   int currentPosition = scrollWheel.getPosition();
   if (currentPosition != previousPosition) {
     Serial.printf("Current Position: %d\n", currentPosition);
+    updateLEDs(currentPosition);
 
-    Coordinate newCoordinate = saveManager.fetch(currentPosition); // Fetch saved coordinates
-    int newBasePosition = newCoordinate.x; // Assuming x is base position
-    int newArmPosition = newCoordinate.y; // Assuming y is arm position
+    Coordinate newCoordinate = saveManager.fetch(currentPosition);
+    int newBasePosition = newCoordinate.x;
+    int newArmPosition = newCoordinate.y; 
     baseMotor.setTargetPosition(newBasePosition);
     // armMotor.setTargetPosition(newArmPosition); // Assuming armMotor is defined similarly 
 
     previousPosition = currentPosition;
   }
-  updateLEDs(currentPosition);
 
   delay(100); // Adjust for responsiveness
 }
