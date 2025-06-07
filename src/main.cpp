@@ -8,8 +8,8 @@
 #include "SaveManager.h"
 
 // Define pins for scroll wheel I2C communication
-#define SDA_PIN 33
-#define SCL_PIN 35
+#define SDA_PIN 35
+#define SCL_PIN 33
 int previousPosition = 1;
 unsigned long positionChangeTime = 0;
 bool timerActive = false;
@@ -40,17 +40,21 @@ int previousButtonState = HIGH;
 
 ScrollWheel scrollWheel; // Starting position is 1
 StepperMotor baseMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
+StepperMotor armMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_ARM, DIR_PIN_ARM);
 PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL);
 
 SaveManager saveManager;
 
-void runButtonPressed();
-void updateLEDs(int position);
-void onTimerComplete();
+void runButtonPressed(int currentPosition);
+void lightLED(int position);
+void onTimerComplete(int currentPosition);
+
+void moveMotors(int x, int y);
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  Serial.println("Starting setup...");
 
   scrollWheel.setup(SDA_PIN, SCL_PIN);
   Serial.println("ScrollWheel Ready");
@@ -83,42 +87,16 @@ void setup() {
 }
 
 void loop() {
-  if (digitalRead(buttonPin) == LOW && previousButtonState == HIGH) {
-    Serial.println("Button pressed!");
-    runButtonPressed();
-  }
-  previousButtonState = digitalRead(buttonPin);
-
   int x = joystick.getX();
   int y = joystick.getY();
 
-  if (x > 2600) {
-    digitalWrite(LED1, LOW);
-    digitalWrite(LED2, HIGH);
-  } else if (x < 1600) {
-    digitalWrite(LED1, HIGH);
-    digitalWrite(LED2, LOW);
-  } else {
-    digitalWrite(LED1, HIGH);
-    digitalWrite(LED2, HIGH);
-  }
-  
-  if (y > 2250) {
-    digitalWrite(LED3, LOW);
-    digitalWrite(LED4, HIGH);
-  } else if (y < 1400) {
-    digitalWrite(LED3, HIGH);
-    digitalWrite(LED4, LOW);
-  } else {
-    digitalWrite(LED3, HIGH);
-    digitalWrite(LED4, HIGH);
-  }
+  // moveMotors(x, y);
 
   scrollWheel.updatePosition();
-  int currentPosition = scrollWheel.getPosition();
+  int currentPosition = scrollWheel.getPosition(); // (between 1 and 5)
   if (currentPosition != previousPosition) {
     Serial.printf("Current Position: %d\n", currentPosition);
-    updateLEDs(currentPosition);
+    lightLED(currentPosition);
   
     previousPosition = currentPosition;
   
@@ -132,30 +110,33 @@ void loop() {
     onTimerComplete(currentPosition);
     timerActive = false;
   }
+
+  int buttonState = digitalRead(buttonPin);
+  if (buttonState == LOW && previousButtonState == HIGH) {
+    Serial.println("Button pressed!");
+    runButtonPressed(currentPosition);
+  }
+  previousButtonState = buttonState;
   
 
   delay(100);
 }
 
+// ============================================================================
+// ============================== Helper Functions ============================
+// ============================================================================
 
-//Function Handlers:
 
-void runButtonPressed() {
-
+void runButtonPressed(int currentPosition) {
   int savePosition = scrollWheel.getPosition();
   int basePosition = baseMotor.getCurrentPosition();
   int armPosition = 0;
   int coordinates[2] = {basePosition, armPosition};
   saveManager.save(savePosition, coordinates);
-  Serial.printf("Saved position %d at base position %ld\n", savePosition, basePosition);
-
-  digitalWrite(LED5, HIGH); // Indicate button press with LED5
-  delay(500); // Debounce delay
-  digitalWrite(LED5, LOW);
+  Serial.printf("Saved base position %ld at save position %d\n", basePosition, savePosition);
 }
 
-
-void updateLEDs(int position) {
+void lightLED(int position) {
   digitalWrite(LED1, position == 1 ? HIGH : LOW);
   digitalWrite(LED2, position == 2 ? HIGH : LOW);
   digitalWrite(LED3, position == 3 ? HIGH : LOW);
@@ -168,5 +149,26 @@ void onTimerComplete(int currentPosition) {
   int newBasePosition = newCoordinate.x;
   int newArmPosition = newCoordinate.y; 
   baseMotor.setTargetPosition(newBasePosition);
-  // armMotor.setTargetPosition(newArmPosition);
+  armMotor.setTargetPosition(newArmPosition);
+  Serial.println("Timer completed, moving motors to saved position");
+}
+
+void moveMotors(int x, int y) {
+  int baseTargetPosition = baseMotor.getTargetPosition();
+  int armTargetPosition = armMotor.getTargetPosition();
+
+  if (x > 2600) {
+    baseMotor.setTargetPosition(baseTargetPosition + 100); 
+  } else if (x < 1600) {
+    baseMotor.setTargetPosition(baseTargetPosition - 100);
+  }
+  
+  if (y > 2250) {
+    armMotor.setTargetPosition(armTargetPosition + 100);
+  }
+  else if (y < 1400) {
+    armMotor.setTargetPosition(armTargetPosition - 100);
+  }
+
+  baseMotor.update();
 }
