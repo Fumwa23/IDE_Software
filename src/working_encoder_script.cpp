@@ -3,8 +3,8 @@
 
 // AS5600 encoder;
 
-// #define SDA_PIN 33
-// #define SCL_PIN 35
+// #define SDA_PIN 35
+// #define SCL_PIN 33
 
 // void setup() {
 //   Serial.begin(115200);

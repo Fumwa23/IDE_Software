@@ -3,7 +3,7 @@
 
 // // Define stepper interface type and pins (adjust pins as needed)
 // #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
-// #define STEP_PIN 3
+// #define STEP_PIN 2
 // #define DIR_PIN 5
 
 // AccelStepper stepper(MOTOR_INTERFACE_TYPE, STEP_PIN, DIR_PIN);

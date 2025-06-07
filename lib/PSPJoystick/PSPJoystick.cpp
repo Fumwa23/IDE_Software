@@ -13,10 +13,10 @@ void PSPJoystick::setup(int pinX, int pinY, int maxIncrement) {
 
 int PSPJoystick::getX() {
     int value = analogRead(_pinX);
-    return map(value, 0, 4095, -_maxIncrement, _maxIncrement);
+    return value; // map(value, 0, 4095, -_maxIncrement, _maxIncrement);
 }
 
 int PSPJoystick::getY() {
     int value = analogRead(_pinY);
-    return map(value, 0, 4095, -_maxIncrement, _maxIncrement);
+    return value; // map(value, 0, 4095, -_maxIncrement, _maxIncrement);
 }
