@@ -81,6 +81,7 @@ void loop() {
     Serial.println("Button pressed!");
     runButtonPressed();
   }
+  previousButtonState = digitalRead(buttonPin);
 
   int x = joystick.getX();
   int y = joystick.getY();
