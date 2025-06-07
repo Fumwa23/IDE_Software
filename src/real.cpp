@@ -39,16 +39,6 @@
 
 // AccelStepper testStepper(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
 
-// // void setup() {
-// //   Serial.begin(115200);
-// //   Serial.println("Stepper Motor Test");
-
-// //   stepper.setMaxSpeed(4000);     // Set max speed (steps/sec)
-// //   stepper.setAcceleration(2000); // Set acceleration (steps/sec^2)
-
-// //   // stepper2.setSpeed(1000); // Set speed for the Stepper library
-// // }
-
 
 // void setup() {
 //   Serial.begin(115200);
