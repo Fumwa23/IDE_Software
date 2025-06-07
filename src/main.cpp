@@ -10,7 +10,9 @@
 // Define pins for scroll wheel I2C communication
 #define SDA_PIN 33
 #define SCL_PIN 35
-int previousPosition = 1; 
+int previousPosition = 1;
+unsigned long positionChangeTime = 0;
+bool timerActive = false;
 
 // Define pins for stpper motor control
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
@@ -44,6 +46,7 @@ SaveManager saveManager;
 
 void runButtonPressed();
 void updateLEDs(int position);
+void onTimerComplete();
 
 void setup() {
   Serial.begin(115200);
@@ -81,7 +84,6 @@ void setup() {
 
 void loop() {
   if (digitalRead(buttonPin) == LOW && previousButtonState == HIGH) {
-    // Button was pressed
     Serial.println("Button pressed!");
     runButtonPressed();
   }
@@ -117,17 +119,22 @@ void loop() {
   if (currentPosition != previousPosition) {
     Serial.printf("Current Position: %d\n", currentPosition);
     updateLEDs(currentPosition);
-
-    Coordinate newCoordinate = saveManager.fetch(currentPosition);
-    int newBasePosition = newCoordinate.x;
-    int newArmPosition = newCoordinate.y; 
-    baseMotor.setTargetPosition(newBasePosition);
-    // armMotor.setTargetPosition(newArmPosition); // Assuming armMotor is defined similarly 
-
+  
     previousPosition = currentPosition;
+  
+    // Reset timer
+    positionChangeTime = millis();
+    timerActive = true;
   }
+  
+  // Check if timer expired
+  if (timerActive && (millis() - positionChangeTime >= 1000)) {
+    onTimerComplete(currentPosition);
+    timerActive = false;
+  }
+  
 
-  delay(100); // Adjust for responsiveness
+  delay(100);
 }
 
 
@@ -154,4 +161,12 @@ void updateLEDs(int position) {
   digitalWrite(LED3, position == 3 ? HIGH : LOW);
   digitalWrite(LED4, position == 4 ? HIGH : LOW);
   digitalWrite(LED5, position == 5 ? HIGH : LOW);
+}
+
+void onTimerComplete(int currentPosition) {
+  Coordinate newCoordinate = saveManager.fetch(currentPosition);
+  int newBasePosition = newCoordinate.x;
+  int newArmPosition = newCoordinate.y; 
+  baseMotor.setTargetPosition(newBasePosition);
+  // armMotor.setTargetPosition(newArmPosition);
 }
