@@ -10,6 +10,7 @@
 // Define pins for scroll wheel I2C communication
 #define SDA_PIN 33
 #define SCL_PIN 35
+int previousPosition = 1; 
 
 // Define pins for stpper motor control
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
@@ -39,7 +40,10 @@ ScrollWheel scrollWheel; // Starting position is 1
 StepperMotor baseMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
 PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL);
 
+SaveManager saveManager;
+
 void runButtonPressed();
+void updateLEDs(int position);
 
 void setup() {
   Serial.begin(115200);
@@ -109,8 +113,19 @@ void loop() {
   }
 
   scrollWheel.updatePosition();
-  Serial.print("Current Position: ");
-  Serial.println(scrollWheel.getPosition());
+  int currentPosition = scrollWheel.getPosition();
+  if (currentPosition != previousPosition) {
+    Serial.printf("Current Position: %d\n", currentPosition);
+
+    Coordinate newCoordinate = saveManager.fetch(currentPosition); // Fetch saved coordinates
+    int newBasePosition = newCoordinate.x; // Assuming x is base position
+    int newArmPosition = newCoordinate.y; // Assuming y is arm position
+    baseMotor.setTargetPosition(newBasePosition);
+    // armMotor.setTargetPosition(newArmPosition); // Assuming armMotor is defined similarly 
+
+    previousPosition = currentPosition;
+  }
+  updateLEDs(currentPosition);
 
   delay(100); // Adjust for responsiveness
 }
@@ -121,8 +136,22 @@ void loop() {
 void runButtonPressed() {
 
   int savePosition = scrollWheel.getPosition();
+  int basePosition = baseMotor.getCurrentPosition();
+  int armPosition = 0;
+  int coordinates[2] = {basePosition, armPosition};
+  saveManager.save(savePosition, coordinates);
+  Serial.printf("Saved position %d at base position %ld\n", savePosition, basePosition);
 
   digitalWrite(LED5, HIGH); // Indicate button press with LED5
   delay(500); // Debounce delay
   digitalWrite(LED5, LOW);
+}
+
+
+void updateLEDs(int position) {
+  digitalWrite(LED1, position == 1 ? HIGH : LOW);
+  digitalWrite(LED2, position == 2 ? HIGH : LOW);
+  digitalWrite(LED3, position == 3 ? HIGH : LOW);
+  digitalWrite(LED4, position == 4 ? HIGH : LOW);
+  digitalWrite(LED5, position == 5 ? HIGH : LOW);
 }
