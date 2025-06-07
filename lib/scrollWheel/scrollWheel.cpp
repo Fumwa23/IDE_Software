@@ -10,15 +10,23 @@ void ScrollWheel::setup(int sdaPin, int sclPin) {
 }
 
 void ScrollWheel::updatePosition() {
+    if (!encoder.detectMagnet()) {
+        // raise error log:
+        Serial.println("No magnet detected!");
+        return;
+    }
+    
     int angle = encoder.rawAngle();
     if (angle == -1) return; // Error reading
 
     int diff = angle - lastAngle;
     if (diff > 1000) {
-        if (position < 5) position++;
+        position++;
+        if (position > 5) position = 1;
         lastAngle = angle;
     } else if (diff < -1000) {
-        if (position > 1) position--;
+        position--;
+        if (position < 1) position = 5;
         lastAngle = angle;
     }
 }
