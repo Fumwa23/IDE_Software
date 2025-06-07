@@ -6,21 +6,17 @@
 
 class PSPJoystick {
 public:
-    PSPJoystick();
-    void setup(adc1_channel_t pinX, adc1_channel_t pinY, int samples = 32);
+    PSPJoystick(adc1_channel_t pinX, adc1_channel_t pinY, int samples = 32);
 
     // Manual calibration
-    void calibrate(int centreXLow, int centreXHigh, int minX, int maxX, int centreYLow, int centreYHigh, int minY, int maxY);
+    void calibrate(int centreXLow, int centreXHigh, int minX, int maxX,
+                   int centreYLow, int centreYHigh, int minY, int maxY);
 
     // Raw voltages
     int getX();
     int getY();
 
-    // Calibrated offset (from centre)
-    int getCalibratedX();
-    int getCalibratedY();
-
-    // Mapped to -100 to +100 range
+    // Mapped from -100 to +100 with deadzone
     int getMappedX();
     int getMappedY();
 
