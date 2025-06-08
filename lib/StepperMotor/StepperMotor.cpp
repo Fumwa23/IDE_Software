@@ -2,7 +2,7 @@
 
 StepperMotor::StepperMotor(uint8_t interfaceType, uint8_t stepPin, uint8_t dirPin)
     : stepper(interfaceType, stepPin, dirPin) {
-    stepper.setMaxSpeed(8000);
+    stepper.setMaxSpeed(16000);
     stepper.setAcceleration(2000);
     stepper.setCurrentPosition(0);
     targetPosition = 0;

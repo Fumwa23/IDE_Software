@@ -19,6 +19,7 @@
 // #define STEP_PIN_BASE 6
 // #define DIR_PIN_BASE 8
 // #define ENABLE_PIN_BASE 4
+// long targetPositionBase = 0;
 
 // #define STEP_PIN_ARM 2
 // #define DIR_PIN_ARM 5
@@ -75,23 +76,13 @@
 //   pinMode(LED3, OUTPUT);
 //   pinMode(LED4, OUTPUT);
 //   pinMode(LED5, OUTPUT);
-
-//   digitalWrite(LED1, LOW);
-//   digitalWrite(LED2, LOW);
-//   digitalWrite(LED3, LOW);
-//   digitalWrite(LED4, LOW);
-//   digitalWrite(LED5, LOW);
+//   lightLED(1); // Start with LED1 lit
 
 //   // Setup button
 //   pinMode(buttonPin, INPUT_PULLUP); // Use internal pull-up resistor
 // }
 
 // void loop() {
-//   int x = joystick.getX();
-//   int y = joystick.getY();
-
-//   // moveMotors(x, y);
-
 //   scrollWheel.updatePosition();
 //   int currentPosition = scrollWheel.getPosition(); // (between 1 and 5)
 //   if (currentPosition != previousPosition) {
@@ -117,9 +108,11 @@
 //     runButtonPressed(currentPosition);
 //   }
 //   previousButtonState = buttonState;
-  
 
-//   delay(100);
+//   int x = joystick.getX();
+//   int y = joystick.getY();
+
+//   moveMotors(x, y);
 // }
 
 // // ============================================================================
@@ -158,9 +151,11 @@
 //   int armTargetPosition = armMotor.getTargetPosition();
 
 //   if (x > 2600) {
-//     baseMotor.setTargetPosition(baseTargetPosition + 100); 
+//     targetPositionBase += 1;
+//     baseMotor.setTargetPosition(targetPositionBase);
 //   } else if (x < 1600) {
-//     baseMotor.setTargetPosition(baseTargetPosition - 100);
+//     targetPositionBase -= 1;
+//     baseMotor.setTargetPosition(targetPositionBase);
 //   }
   
 //   if (y > 2250) {
@@ -169,6 +164,11 @@
 //   else if (y < 1400) {
 //     armMotor.setTargetPosition(armTargetPosition - 100);
 //   }
+
+
+//   // Serial.printf("X: %d mV, Y: %d mV\n", x, y);
+//   // Serial.printf("Base Target Position: %ld, Arm Target Position: %ld\n", 
+//   //               targetPositionBase, armMotor.getTargetPosition());
 
 //   baseMotor.update();
 // }
