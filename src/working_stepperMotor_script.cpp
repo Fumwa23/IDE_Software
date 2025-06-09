@@ -28,10 +28,10 @@
 
 // void loop() {
 //   if (digitalRead(BUTTON_PIN) == LOW) {
-//     Serial.println("Button pressed! Starting movement...");
+//     //Serial.println("Button pressed! Starting movement...");
 //     //stepper.moveTo(0);
 //     stepperMotor.setTargetPosition(0);
-//     Serial.println("Moving to position 0");
+//     //Serial.println("Moving to position 0");
 //   } else {
 //     //stepper.moveTo(1600);
 //     stepperMotor.setTargetPosition(1600);

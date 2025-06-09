@@ -4,32 +4,24 @@
 #include "ScrollWheel.h"
 #include "StepperMotor.h"
 #include "PSPJoystick.h"
-
 #include "SaveManager.h"
 
-// Define pins for scroll wheel I2C communication
+// === Pin Definitions ===
 #define SDA_PIN 35
 #define SCL_PIN 33
-int previousPosition = 1;
-unsigned long positionChangeTime = 0;
-bool timerActive = false;
 
-// Define pins for stpper motor control
 #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
 #define STEP_PIN_BASE 6
 #define DIR_PIN_BASE 8
 #define ENABLE_PIN_BASE 4
-long targetPositionBase = 0;
 
 #define STEP_PIN_ARM 2
 #define DIR_PIN_ARM 5
 #define ENABLE_PIN_ARM 1
 
-// Joystick ADC Channels
 #define JOYSTICK_X_CHANNEL ADC1_CHANNEL_8 // GPIO9
 #define JOYSTICK_Y_CHANNEL ADC1_CHANNEL_6 // GPIO7
 
-// LED Pins
 #define LED1 21
 #define LED2 34
 #define LED3 38
@@ -37,19 +29,36 @@ long targetPositionBase = 0;
 #define LED5 40
 
 #define buttonPin 3
-int previousButtonState = HIGH;
 
-ScrollWheel scrollWheel; // Starting position is 1
+// === Globals ===
+ScrollWheel scrollWheel;
 StepperMotor baseMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
 StepperMotor armMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_ARM, DIR_PIN_ARM);
-PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL);
-
+PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL, 2);  // Reduced samples for speed
 SaveManager saveManager;
 
+int previousPosition = 1;
+unsigned long positionChangeTime = 0;
+bool timerActive = false;
+
+float targetPositionBase = 0;
+float targetPositionArm = 0;
+
+volatile bool buttonPressed = false;
+unsigned long lastDebounceTime = 0;
+const unsigned long debounceDelay = 50;
+
+unsigned long lastInputPoll = 0;
+const unsigned long inputPollInterval = 50;
+
+int joystickX = 0;
+int joystickY = 0;
+
+// === Function Prototypes ===
+void IRAM_ATTR handleButtonInterrupt();
 void runButtonPressed(int currentPosition);
 void lightLED(int position);
 void onTimerComplete(int currentPosition);
-
 void moveMotors(int x, int y);
 
 void setup() {
@@ -64,62 +73,79 @@ void setup() {
   pinMode(ENABLE_PIN_BASE, INPUT_PULLDOWN);
   Serial.println("Stepper Motor Ready");
 
-  // Initialise joystick
   joystick.calibrate(
-    1600, 2400, 750, 3200,  // X axis - (deadzone: 1600-2400, min: 750, max: 3200)
+    1600, 2400, 750, 3200,  // X axis
     1400, 2250, 450, 2900   // Y axis
   );
 
-  // Setup LEDs
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
   pinMode(LED4, OUTPUT);
   pinMode(LED5, OUTPUT);
-  lightLED(1); // Start with LED1 lit
+  lightLED(1);
 
-  // Setup button
-  pinMode(buttonPin, INPUT_PULLUP); // Use internal pull-up resistor
+  pinMode(buttonPin, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonInterrupt, FALLING);
 }
 
 void loop() {
-  scrollWheel.updatePosition();
-  int currentPosition = scrollWheel.getPosition(); // (between 1 and 5)
-  if (currentPosition != previousPosition) {
-    Serial.printf("Current Position: %d\n", currentPosition);
-    lightLED(currentPosition);
-  
-    previousPosition = currentPosition;
-  
-    // Reset timer
-    positionChangeTime = millis();
-    timerActive = true;
+  unsigned long start = micros();
+  unsigned long now = millis();
+
+  // === Poll scroll wheel and joystick every 50ms ===
+  if (now - lastInputPoll >= inputPollInterval) {
+    scrollWheel.updatePosition();
+    int currentPosition = scrollWheel.getPosition();
+    if (currentPosition != previousPosition) {
+      Serial.printf("Current Position: %d\n", currentPosition);
+      lightLED(currentPosition);
+      previousPosition = currentPosition;
+      positionChangeTime = now;
+      timerActive = true;
+    }
+
+    joystickX = joystick.getX();
+    joystickY = joystick.getY();
+
+    lastInputPoll = now;
   }
-  
-  // Check if timer expired
-  if (timerActive && (millis() - positionChangeTime >= 1000)) {
-    onTimerComplete(currentPosition);
+
+  // === Check scroll wheel timer ===
+  if (timerActive && (now - positionChangeTime >= 1000)) {
+    onTimerComplete(previousPosition);
     timerActive = false;
   }
 
-  int buttonState = digitalRead(buttonPin);
-  if (buttonState == LOW && previousButtonState == HIGH) {
-    Serial.println("Button pressed!");
-    runButtonPressed(currentPosition);
+  // === Check button interrupt flag ===
+  if (buttonPressed && (now - lastDebounceTime >= debounceDelay)) {
+    buttonPressed = false;
+    runButtonPressed(previousPosition);
   }
-  previousButtonState = buttonState;
 
-  int x = joystick.getX();
-  int y = joystick.getY();
+  // === Update motors ===
+  moveMotors(joystickX, joystickY);
+  baseMotor.update();
+  armMotor.update();
 
-  moveMotors(x, y);
+  Serial.println(micros() - start);
 }
 
-// ============================================================================
-// ============================== Helper Functions ============================
-// ============================================================================
+// === ISR ===
+void IRAM_ATTR handleButtonInterrupt() {
+  static unsigned long lastInterruptTime = 0;
+  unsigned long interruptTime = millis();
 
+  // Simple debounce check (avoid bouncing)
+  if (interruptTime - lastInterruptTime > debounceDelay) {
+    buttonPressed = true;
+    lastDebounceTime = interruptTime;
+  }
 
+  lastInterruptTime = interruptTime;
+}
+
+// === Helper Functions ===
 void runButtonPressed(int currentPosition) {
   int savePosition = scrollWheel.getPosition();
   int basePosition = baseMotor.getCurrentPosition();
@@ -140,35 +166,93 @@ void lightLED(int position) {
 void onTimerComplete(int currentPosition) {
   Coordinate newCoordinate = saveManager.fetch(currentPosition);
   int newBasePosition = newCoordinate.x;
-  int newArmPosition = newCoordinate.y; 
+  int newArmPosition = newCoordinate.y;
   baseMotor.setTargetPosition(newBasePosition);
   armMotor.setTargetPosition(newArmPosition);
   Serial.println("Timer completed, moving motors to saved position");
 }
 
 void moveMotors(int x, int y) {
-  int baseTargetPosition = baseMotor.getTargetPosition();
-  int armTargetPosition = armMotor.getTargetPosition();
+  // Serial.printf("Joystick X: %d, Y: %d\n", x, y);
+  // Serial.printf("Base Motor Target Position: %ld\n", targetPositionBase);
 
   if (x > 2600) {
-    targetPositionBase += 1;
+    targetPositionBase += 0.1;
     baseMotor.setTargetPosition(targetPositionBase);
   } else if (x < 1600) {
-    targetPositionBase -= 1;
+    targetPositionBase -= 0.1;
     baseMotor.setTargetPosition(targetPositionBase);
   }
-  
+
   if (y > 2250) {
-    armMotor.setTargetPosition(armTargetPosition + 100);
+    targetPositionArm += 0.01;
+    armMotor.setTargetPosition(targetPositionArm);
+  } else if (y < 1400) {
+    targetPositionArm -= 0.01;
+    armMotor.setTargetPosition(targetPositionArm );
   }
-  else if (y < 1400) {
-    armMotor.setTargetPosition(armTargetPosition - 100);
-  }
-
-
-  // Serial.printf("X: %d mV, Y: %d mV\n", x, y);
-  // Serial.printf("Base Target Position: %ld, Arm Target Position: %ld\n", 
-  //               targetPositionBase, armMotor.getTargetPosition());
-
-  baseMotor.update();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// #include <AccelStepper.h>
+// // #include <Stepper.h>
+// #include <StepperMotor.h>
+
+// // Define stepper interface type and pins (adjust pins as needed)
+// #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
+// #define STEP_PIN 6
+// #define DIR_PIN 8
+
+// #define BUTTON_PIN 3
+
+// AccelStepper stepper(MOTOR_INTERFACE_TYPE, STEP_PIN, DIR_PIN);
+// // Stepper stepper2(200, STEP_PIN, DIR_PIN);
+
+// StepperMotor stepperMotor(MOTOR_INTERFACE_TYPE, STEP_PIN, DIR_PIN);
+
+// void setup() {
+//   Serial.begin(115200);
+//   Serial.println("Stepper Motor Test");
+
+//   stepper.setMaxSpeed(4000);     // Set max speed (steps/sec)
+//   stepper.setAcceleration(2000); // Set acceleration (steps/sec^2)
+
+//   pinMode(BUTTON_PIN, INPUT_PULLUP); // Set button pin as input with pull-up resistor
+
+//   // stepper2.setSpeed(1000); // Set speed for the Stepper library
+// }
+
+// void loop() {
+//   unsigned long start = micros();
+//   if (digitalRead(BUTTON_PIN) == LOW) {
+//     //Serial.println("Button pressed! Starting movement...");
+//     //stepper.moveTo(0);
+//     stepperMotor.setTargetPosition(0);
+//     //Serial.println("Moving to position 0");
+//   } else {
+//     //stepper.moveTo(1600);
+//     stepperMotor.setTargetPosition(16000);
+//    // Serial.println("Moving to position 1600");
+//   }
+
+//   // stepper.run();
+//   stepperMotor.update();
+
+//   Serial.println(micros() - start);
+// }

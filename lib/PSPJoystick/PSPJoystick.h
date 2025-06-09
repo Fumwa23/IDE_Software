@@ -6,7 +6,7 @@
 
 class PSPJoystick {
 public:
-    PSPJoystick(adc1_channel_t pinX, adc1_channel_t pinY, int samples = 32);
+    PSPJoystick(adc1_channel_t pinX, adc1_channel_t pinY, int samples = 1);
 
     // Manual calibration
     void calibrate(int centreXLow, int centreXHigh, int minX, int maxX,
