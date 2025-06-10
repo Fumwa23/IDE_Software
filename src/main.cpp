@@ -54,30 +54,38 @@ const unsigned long inputPollInterval = 50;
 int joystickX = 0;
 int joystickY = 0;
 
-// === Function Prototypes ===
+// === Function Declarations ===
 void IRAM_ATTR handleButtonInterrupt();
 void runButtonPressed(int currentPosition);
 void lightLED(int position);
 void onTimerComplete(int currentPosition);
 void moveMotors(int x, int y);
 
+// === Main Program ===
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
   Serial.println("Starting setup...");
 
+  // Scrollwheel
   scrollWheel.setup(SDA_PIN, SCL_PIN);
   Serial.println("ScrollWheel Ready");
 
+  // Stepper motors
   baseMotor.setTargetPosition(0);
   pinMode(ENABLE_PIN_BASE, INPUT_PULLDOWN);
+  armMotor.setTargetPosition(0);
+  pinMode(ENABLE_PIN_ARM, INPUT_PULLDOWN);
   Serial.println("Stepper Motor Ready");
 
+  // Joystick
   joystick.calibrate(
     1600, 2400, 750, 3200,  // X axis
     1400, 2250, 450, 2900   // Y axis
   );
 
+  // LEDs
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
@@ -85,12 +93,13 @@ void setup() {
   pinMode(LED5, OUTPUT);
   lightLED(1);
 
+  // Button
   pinMode(buttonPin, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(buttonPin), handleButtonInterrupt, FALLING);
 }
 
 void loop() {
-  unsigned long start = micros();
+  unsigned long start = micros(); // measures loop lengh.
   unsigned long now = millis();
 
   // === Poll scroll wheel and joystick every 50ms ===
@@ -128,7 +137,7 @@ void loop() {
   baseMotor.update();
   armMotor.update();
 
-  Serial.println(micros() - start);
+  // Serial.println(micros() - start);
 }
 
 // === ISR ===
@@ -156,11 +165,11 @@ void runButtonPressed(int currentPosition) {
 }
 
 void lightLED(int position) {
-  digitalWrite(LED1, position == 1 ? HIGH : LOW);
-  digitalWrite(LED2, position == 2 ? HIGH : LOW);
-  digitalWrite(LED3, position == 3 ? HIGH : LOW);
-  digitalWrite(LED4, position == 4 ? HIGH : LOW);
-  digitalWrite(LED5, position == 5 ? HIGH : LOW);
+analogWrite(LED1, position == 1 ? 30 : 0);
+analogWrite(LED3, position == 3 ? 30 : 0);
+analogWrite(LED2, position == 2 ? 30 : 0);
+analogWrite(LED4, position == 4 ? 30 : 0);
+analogWrite(LED5, position == 5 ? 30 : 0);
 }
 
 void onTimerComplete(int currentPosition) {
@@ -173,14 +182,11 @@ void onTimerComplete(int currentPosition) {
 }
 
 void moveMotors(int x, int y) {
-  // Serial.printf("Joystick X: %d, Y: %d\n", x, y);
-  // Serial.printf("Base Motor Target Position: %ld\n", targetPositionBase);
-
   if (x > 2600) {
-    targetPositionBase += 0.1;
+    targetPositionBase += 0.07;
     baseMotor.setTargetPosition(targetPositionBase);
   } else if (x < 1600) {
-    targetPositionBase -= 0.1;
+    targetPositionBase -= 0.07;
     baseMotor.setTargetPosition(targetPositionBase);
   }
 
@@ -192,67 +198,3 @@ void moveMotors(int x, int y) {
     armMotor.setTargetPosition(targetPositionArm );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// #include <AccelStepper.h>
-// // #include <Stepper.h>
-// #include <StepperMotor.h>
-
-// // Define stepper interface type and pins (adjust pins as needed)
-// #define MOTOR_INTERFACE_TYPE AccelStepper::DRIVER
-// #define STEP_PIN 6
-// #define DIR_PIN 8
-
-// #define BUTTON_PIN 3
-
-// AccelStepper stepper(MOTOR_INTERFACE_TYPE, STEP_PIN, DIR_PIN);
-// // Stepper stepper2(200, STEP_PIN, DIR_PIN);
-
-// StepperMotor stepperMotor(MOTOR_INTERFACE_TYPE, STEP_PIN, DIR_PIN);
-
-// void setup() {
-//   Serial.begin(115200);
-//   Serial.println("Stepper Motor Test");
-
-//   stepper.setMaxSpeed(4000);     // Set max speed (steps/sec)
-//   stepper.setAcceleration(2000); // Set acceleration (steps/sec^2)
-
-//   pinMode(BUTTON_PIN, INPUT_PULLUP); // Set button pin as input with pull-up resistor
-
-//   // stepper2.setSpeed(1000); // Set speed for the Stepper library
-// }
-
-// void loop() {
-//   unsigned long start = micros();
-//   if (digitalRead(BUTTON_PIN) == LOW) {
-//     //Serial.println("Button pressed! Starting movement...");
-//     //stepper.moveTo(0);
-//     stepperMotor.setTargetPosition(0);
-//     //Serial.println("Moving to position 0");
-//   } else {
-//     //stepper.moveTo(1600);
-//     stepperMotor.setTargetPosition(16000);
-//    // Serial.println("Moving to position 1600");
-//   }
-
-//   // stepper.run();
-//   stepperMotor.update();
-
-//   Serial.println(micros() - start);
-// }
