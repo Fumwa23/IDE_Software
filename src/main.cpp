@@ -6,6 +6,8 @@
 #include "PSPJoystick.h"
 #include "SaveManager.h"
 
+#include "driver/rtc_io.h"
+
 // === Pin Definitions ===
 #define SDA_PIN 35
 #define SCL_PIN 33
@@ -81,6 +83,11 @@ void setup() {
   gpio_hold_dis(GPIO_NUM_1);
   gpio_set_direction(GPIO_NUM_1, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_NUM_1, 0);
+
+  rtc_gpio_init(GPIO_NUM_12);
+  rtc_gpio_set_direction(GPIO_NUM_12, RTC_GPIO_MODE_INPUT_ONLY);
+  rtc_gpio_pullup_en(GPIO_NUM_12);
+  rtc_gpio_hold_en(GPIO_NUM_12);
 
   pinMode(POWER_SWITCH_PIN, INPUT_PULLUP);
   goToSleep = digitalRead(POWER_SWITCH_PIN) == HIGH;
