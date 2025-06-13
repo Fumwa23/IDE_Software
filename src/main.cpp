@@ -30,12 +30,16 @@
 
 #define buttonPin 3
 
+#define POWER_SWITCH_PIN 12
+
 // === Globals ===
 ScrollWheel scrollWheel;
 StepperMotor baseMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_BASE, DIR_PIN_BASE);
 StepperMotor armMotor(MOTOR_INTERFACE_TYPE, STEP_PIN_ARM, DIR_PIN_ARM);
 PSPJoystick joystick(JOYSTICK_X_CHANNEL, JOYSTICK_Y_CHANNEL, 2);  // Reduced samples for speed
 SaveManager saveManager;
+
+volatile bool goToSleep = true;
 
 int previousPosition = 1;
 unsigned long positionChangeTime = 0;
@@ -56,6 +60,7 @@ int joystickY = 0;
 
 // === Function Declarations ===
 void IRAM_ATTR handleButtonInterrupt();
+void IRAM_ATTR powerOffInterrupt();
 void runButtonPressed(int currentPosition);
 void lightLED(int position);
 void onTimerComplete(int currentPosition);
@@ -68,15 +73,28 @@ void setup() {
   delay(1000);
   Serial.println("Starting setup...");
 
+  // Deep Sleep Configuration
+  gpio_hold_dis(GPIO_NUM_4);
+  gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
+  gpio_set_level(GPIO_NUM_4, 0);
+
+  gpio_hold_dis(GPIO_NUM_1);
+  gpio_set_direction(GPIO_NUM_1, GPIO_MODE_OUTPUT);
+  gpio_set_level(GPIO_NUM_1, 0);
+
+  pinMode(POWER_SWITCH_PIN, INPUT_PULLUP);
+  goToSleep = digitalRead(POWER_SWITCH_PIN) == HIGH;
+
+  esp_sleep_enable_ext0_wakeup(GPIO_NUM_12, 0);
+  attachInterrupt(digitalPinToInterrupt(POWER_SWITCH_PIN), powerOffInterrupt, RISING);
+
   // Scrollwheel
   scrollWheel.setup(SDA_PIN, SCL_PIN);
   Serial.println("ScrollWheel Ready");
 
   // Stepper motors
   baseMotor.setTargetPosition(0);
-  pinMode(ENABLE_PIN_BASE, INPUT_PULLDOWN);
   armMotor.setTargetPosition(0);
-  pinMode(ENABLE_PIN_ARM, INPUT_PULLDOWN);
   Serial.println("Stepper Motor Ready");
 
   // Joystick
@@ -99,6 +117,21 @@ void setup() {
 }
 
 void loop() {
+  Serial.println("Looping...");
+  
+  if (goToSleep) {
+    Serial.println("Entering deep sleep...");
+
+    gpio_set_level(GPIO_NUM_4, 1); // Base enable pin
+    gpio_hold_en(GPIO_NUM_4);
+
+    gpio_set_level(GPIO_NUM_1, 1); // Arm enable pin
+    gpio_hold_en(GPIO_NUM_1);
+
+    delay(100);
+    esp_deep_sleep_start();
+  }
+
   unsigned long start = micros(); // measures loop lengh.
   unsigned long now = millis();
 
@@ -154,6 +187,11 @@ void IRAM_ATTR handleButtonInterrupt() {
   lastInterruptTime = interruptTime;
 }
 
+void IRAM_ATTR powerOffInterrupt() {
+  goToSleep = true;
+  Serial.println("Power Off Interrupt Triggered");
+}
+
 // === Helper Functions ===
 void runButtonPressed(int currentPosition) {
   int savePosition = scrollWheel.getPosition();
@@ -183,10 +221,10 @@ void onTimerComplete(int currentPosition) {
 
 void moveMotors(int x, int y) {
   if (x > 2600) {
-    targetPositionBase += 0.07;
+    targetPositionBase += 0.04;
     baseMotor.setTargetPosition(targetPositionBase);
   } else if (x < 1600) {
-    targetPositionBase -= 0.07;
+    targetPositionBase -= 0.04;
     baseMotor.setTargetPosition(targetPositionBase);
   }
 
